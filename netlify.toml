@@ -20,3 +20,8 @@
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
   NPM_FLAGS = "--no-audit --no-fund"
+
+# Garante que a saída .next seja convertida para o runtime do Netlify
+# (Functions, redirects e assets), em vez de ser publicada como arquivos crus.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

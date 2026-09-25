@@ -36,7 +36,14 @@ export function ProductForm({ product }: { product?: Product }) {
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+
+    // O React anula `event.currentTarget` quando o handler síncrono termina,
+    // e o trabalho abaixo continua dentro de startTransition (async). Guardar
+    // o <form> aqui evita o
+    //   "Cannot read properties of null (reading 'reset')".
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
     setResult(null);
     setFieldErrors({});
 
@@ -58,7 +65,8 @@ export function ProductForm({ product }: { product?: Product }) {
         router.refresh();
       } else {
         setSavedId('new');
-        event.currentTarget.reset();
+        // `form` (capturado acima) em vez de event.currentTarget, que já é null.
+        form.reset();
         setMetrics({ gvm_max: 0, videos_criadores: 0, quantidade_criadores: 0 });
         setManualScore('');
         router.refresh();

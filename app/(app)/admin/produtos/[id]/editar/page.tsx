@@ -7,7 +7,7 @@ import { DeleteProductButton } from '@/components/delete-product-button';
 import { PageHeader } from '@/components/page-header';
 import { ProductForm } from '@/components/product-form';
 import { fetchProductById } from '@/lib/products';
-import { requireAdmin } from '@/lib/session';
+import { getAdminProfile } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Editar produto' };
@@ -18,7 +18,9 @@ export default async function EditarProdutoPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
+  // Não é admin? O layout renderiza <AdminAccessDenied /> (sem 404).
+  const admin = await getAdminProfile();
+  if (!admin) return null;
 
   const { id } = await params;
   const supabase = await createClient();

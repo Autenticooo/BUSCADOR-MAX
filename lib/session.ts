@@ -53,7 +53,20 @@ export async function requireProfile(): Promise<UserProfile> {
   return profile;
 }
 
-/** Bloqueia a área administrativa para quem não é admin. */
+/**
+ * Perfil do usuário logado **se** ele for admin; `null` para assinante comum
+ * ou visitante. Não lança notFound(): a área /admin usa este helper para
+ * renderizar <AdminAccessDenied /> em vez de um 404.
+ */
+export async function getAdminProfile(): Promise<UserProfile | null> {
+  const profile = await getCurrentProfile();
+  return profile && profile.role === 'admin' ? profile : null;
+}
+
+/**
+ * Bloqueia a área administrativa para quem não é admin.
+ * Usado pelas Server Actions, onde "negar" é devolver erro em vez de renderizar.
+ */
 export async function requireAdmin(): Promise<UserProfile> {
   const profile = await requireProfile();
   if (profile.role !== 'admin') notFound();

@@ -24,7 +24,7 @@ import { findPais } from '@/lib/constants';
 import { formatDate, formatMoney } from '@/lib/format';
 import { buildProductHref, parseFilters } from '@/lib/params';
 import { fetchProducts, startOfTodayISO } from '@/lib/products';
-import { requireAdmin } from '@/lib/session';
+import { getAdminProfile } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Administração' };
@@ -35,7 +35,11 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdmin();
+  // Mesmo com o layout já barrando, repetimos a checagem: se o perfil não for
+  // admin (ou o children for renderizado antes do layout), devolvemos null em
+  // vez de notFound() — o layout mostra <AdminAccessDenied />.
+  const admin = await getAdminProfile();
+  if (!admin) return null;
 
   const raw = await searchParams;
   const filters = parseFilters(raw);

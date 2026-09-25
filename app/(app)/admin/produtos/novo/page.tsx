@@ -4,13 +4,16 @@ import Link from 'next/link';
 
 import { PageHeader } from '@/components/page-header';
 import { ProductForm } from '@/components/product-form';
-import { requireAdmin } from '@/lib/session';
+import { getAdminProfile } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Adicionar produto' };
 export const dynamic = 'force-dynamic';
 
 export default async function NovoProdutoPage() {
-  await requireAdmin();
+  // Não é admin? O layout renderiza <AdminAccessDenied /> (sem 404) e aqui
+  // não montamos o formulário.
+  const admin = await getAdminProfile();
+  if (!admin) return null;
 
   return (
     <>

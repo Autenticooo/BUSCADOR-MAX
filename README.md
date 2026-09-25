@@ -98,6 +98,39 @@ update public.users set role = 'admin' where email = 'seu@email.com';
 > Se o seu projeto não permitir trigger em `auth.users`, tudo bem: o login chama
 > a RPC `public.ensure_profile()` como fallback e o perfil é criado do mesmo jeito.
 
+### 3.4 Diagnóstico da integração
+
+```
+GET /api/health
+```
+
+Devolve o estado da conexão sem expor a chave:
+
+```json
+{
+  "configured": true,
+  "url": "https://xxxx.supabase.co",
+  "keyFormat": "publishable (formato novo)",
+  "status": "ok",
+  "rest": { "reachable": true, "schema": "aplicado" },
+  "auth": { "reachable": true },
+  "hint": "Integração pronta: schema aplicado e RLS ativo."
+}
+```
+
+Como ler `rest.schema`:
+
+| valor | significado |
+| --- | --- |
+| `aplicado` | `public.products` existe — inclusive quando o RLS nega a leitura da anon key, que é o comportamento correto |
+| `nao_aplicado` | o PostgREST não achou a relação: rode `0001_init.sql` |
+| `inacessivel` | o servidor não alcançou o Supabase (URL errada, projeto pausado, ambiente sem egress) |
+
+> **Chave `sb_publishable_…`:** o `@supabase/auth-js` só chama `decodeJWT()` sobre
+> access tokens de sessão, nunca sobre a `apiKey` — ela viaja apenas no header
+> `apikey`. O formato novo funciona sem adaptação. A `sb_secret_…` **não** deve ser
+> usada aqui; o app inteiro roda com a publishable + RLS.
+
 ---
 
 ## 4. Banco de dados
@@ -175,7 +208,7 @@ tests/                    vitest: banco/RLS (PGlite) + regras de negócio
 | `npm run build` | build de produção |
 | `npm start` | servidor de produção |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | **55 testes**: 26 de schema/RLS em Postgres real (PGlite) + 29 de regras |
+| `npm test` | **64 testes**: 26 de schema/RLS em Postgres real (PGlite) + 38 de regras |
 
 Os testes de banco (`tests/db`) sobem um Postgres de verdade em WASM, aplicam a
 `0001_init.sql` e trocam de role (`anon` / `authenticated` + claim de usuário) para

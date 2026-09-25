@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { translateDbError } from '@/lib/errors';
+import { translateAuthError, translateDbError } from '@/lib/errors';
 import { requireProfile } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/types';
@@ -77,7 +77,7 @@ export async function changePasswordAction(
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: translateAuthError(error) };
 
   return { ok: true, message: 'Senha alterada com sucesso.' };
 }

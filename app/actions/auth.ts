@@ -43,7 +43,7 @@ export async function signInAction(
   });
 
   if (error) {
-    return { ok: false, error: translateAuthError(error.message) };
+    return { ok: false, error: translateAuthError(error) };
   }
 
   // garante que a linha em public.users existe (idempotente)

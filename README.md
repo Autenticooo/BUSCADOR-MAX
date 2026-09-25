@@ -107,7 +107,7 @@ ADMIN_EMAIL=voce@exemplo.com ADMIN_PASSWORD='sua-senha' npm run validate
 ```
 
 O script `scripts/validate-integration.mjs` roda **contra o seu projeto real** e
-cobre 13 verificações em 6 blocos:
+cobre **24 verificações** em 6 blocos (13 quando o bloco do usuário comum é pulado):
 
 | bloco | o que prova |
 | --- | --- |
@@ -241,7 +241,7 @@ tests/                    vitest: banco/RLS (PGlite) + regras de negócio
 | `npm run build` | build de produção |
 | `npm start` | servidor de produção |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run validate` | validação ponta a ponta contra o projeto Supabase real (13 verificações) |
+| `npm run validate` | validação ponta a ponta contra o projeto Supabase real (24 verificações) |
 | `npm test` | **64 testes**: 26 de schema/RLS em Postgres real (PGlite) + 38 de regras |
 
 Os testes de banco (`tests/db`) sobem um Postgres de verdade em WASM, aplicam a

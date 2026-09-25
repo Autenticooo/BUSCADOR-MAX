@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:test": "vitest run tests/db"
+    "db:test": "vitest run tests/db",
+    "validate": "node scripts/validate-integration.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

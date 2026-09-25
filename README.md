@@ -98,7 +98,40 @@ update public.users set role = 'admin' where email = 'seu@email.com';
 > Se o seu projeto não permitir trigger em `auth.users`, tudo bem: o login chama
 > a RPC `public.ensure_profile()` como fallback e o perfil é criado do mesmo jeito.
 
-### 3.4 Diagnóstico da integração
+### 3.4 Validação ponta a ponta
+
+Depois de aplicar a migration e criar o admin, valide tudo de uma vez:
+
+```bash
+ADMIN_EMAIL=voce@exemplo.com ADMIN_PASSWORD='sua-senha' npm run validate
+```
+
+O script `scripts/validate-integration.mjs` roda **contra o seu projeto real** e
+cobre 13 verificações em 6 blocos:
+
+| bloco | o que prova |
+| --- | --- |
+| 0. Conectividade | o servidor alcança o Supabase e `public.products` existe |
+| 1. Login | `signInWithPassword` devolve sessão para o admin |
+| 2. Área admin | perfil existe, `role='admin'` e `is_admin()` responde `true` |
+| 3. CRUD | create → read → update → delete, com o trigger recalculando o MAX SCORE (50 → 100) |
+| 4. Usuário comum | lê a base; **não** cria/edita/exclui; **não** se promove a admin; favoritos só os próprios |
+| 5. Limpeza | remove o produto de teste |
+
+Detalhes:
+
+- As credenciais vêm de variáveis de ambiente e **nunca são impressas**.
+- Sem `USER_EMAIL`/`USER_PASSWORD` o script cria um usuário temporário via
+  `signUp` (e avisa que ele fica em *Authentication > Users*, porque a
+  publishable key não apaga usuário). Use `--no-signup` para pular esse bloco.
+- Se o projeto exigir confirmação de e-mail, o bloco 4 é marcado como pulado
+  com a instrução do que fazer.
+- Sai com código 1 se qualquer verificação falhar — dá para usar em CI.
+- O bloco 2 detecta a armadilha mais comum: rodar o `update ... set role='admin'`
+  **antes** do perfil existir, o que afeta 0 linhas em silêncio. Nesse caso ele
+  imprime o comando correto com o `id` do usuário.
+
+### 3.5 Diagnóstico da integração
 
 ```
 GET /api/health
@@ -208,6 +241,7 @@ tests/                    vitest: banco/RLS (PGlite) + regras de negócio
 | `npm run build` | build de produção |
 | `npm start` | servidor de produção |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm run validate` | validação ponta a ponta contra o projeto Supabase real (13 verificações) |
 | `npm test` | **64 testes**: 26 de schema/RLS em Postgres real (PGlite) + 38 de regras |
 
 Os testes de banco (`tests/db`) sobem um Postgres de verdade em WASM, aplicam a

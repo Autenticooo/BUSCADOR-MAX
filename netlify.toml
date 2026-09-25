@@ -1,0 +1,22 @@
+# ============================================================================
+# BUSCADOR MAX — configuração de deploy no Netlify
+#
+# IMPORTANTE: defina também no Netlify (Site configuration > Environment variables)
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
+# Elas são embutidas no bundle EM TEMPO DE BUILD — depois de mudar qualquer uma,
+# rode "Deploys > Trigger deploy > Clear cache and deploy site".
+#
+# Depois do primeiro deploy, cadastre o domínio em
+#   Supabase > Authentication > URL Configuration > Site URL e Redirect URLs
+# ============================================================================
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Next.js 16 exige Node 20.9+
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+  NPM_FLAGS = "--no-audit --no-fund"

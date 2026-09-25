@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #05070d;
+  --color-ink-900: #080c15;
+  --color-ink-850: #0b111d;
+  --color-ink-800: #101728;
+  --color-ink-700: #172033;
+  --color-ink-600: #212c44;
+
+  --color-brand-cyan: #25f4ee;
+  --color-brand-pink: #fe2c55;
+  --color-brand-lime: #b6ff3d;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: color-mix(in oklab, white 10%, transparent);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink-950 text-slate-300 antialiased;
+    background-image:
+      radial-gradient(60rem 40rem at 110% -10%, rgb(37 244 238 / 0.07), transparent 60%),
+      radial-gradient(50rem 35rem at -10% 110%, rgb(254 44 85 / 0.06), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-brand-cyan/30 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ink-600;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-600/80;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-white/8 bg-ink-850/80 shadow-[0_1px_0_0_rgb(255_255_255_/_0.04)_inset] backdrop-blur-sm;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-white/10 bg-ink-900/80 px-3.5 py-2.5 text-sm text-slate-100
+      placeholder:text-slate-500 outline-none transition
+      focus:border-brand-cyan/60 focus:ring-2 focus:ring-brand-cyan/20
+      disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold tracking-wide text-slate-400 uppercase;
+  }
+
+  /* Tailwind v4 não permite @apply de classes customizadas:
+     a base dos botões é compartilhada por lista de seletores. */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5
+      text-sm font-semibold whitespace-nowrap transition select-none
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-brand-cyan text-ink-950 shadow-[0_8px_30px_-12px_rgb(37_244_238_/_0.8)] hover:bg-brand-cyan/85;
+  }
+
+  .btn-secondary {
+    @apply border border-white/12 bg-white/5 text-slate-100 hover:bg-white/10;
+  }
+
+  .btn-danger {
+    @apply border border-brand-pink/40 bg-brand-pink/15 text-brand-pink hover:bg-brand-pink/25;
+  }
+
+  .btn-ghost {
+    @apply text-slate-400 hover:bg-white/5 hover:text-slate-100;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .th {
+    @apply px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-400 uppercase;
+  }
+
+  .td {
+    @apply px-4 py-3 text-sm text-slate-300;
+  }
+}

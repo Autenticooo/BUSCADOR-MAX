@@ -6,9 +6,12 @@ import { parseKiwifyEvent, type KiwifyEvent } from '@/lib/kiwify';
 import { createServiceClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
+// Node.js explícito: a rota lê segredos de process.env em runtime e jamais
+// pode ser empacotada para edge/client.
+export const runtime = 'nodejs';
 
 /**
- * POST /api/webhook/kiwify?token=<KIWIFY_WEBHOOK_TOKEN>
+ * POST /api/webhook/kiwify?token=<segredo do webhook>
  *
  * Webhook da Kiwify (Apps > Webhooks). A cada evento:
  *   - compra aprovada / assinatura renovada  → users.ativo = true
@@ -19,6 +22,8 @@ export const dynamic = 'force-dynamic';
  * Segurança:
  *   - o token é exigido em TODA chamada (query ?token= ou header
  *     x-kiwify-token) e comparado em tempo constante com a env;
+ *   - a variável de ambiente é lida SOMENTE aqui, em runtime, dentro do
+ *     handler — jamais use um prefixo NEXT_PUBLIC_ para ela;
  *   - a escrita usa a service role (o chamador não tem sessão), então o
  *     caminho público continua 100% protegido pelo RLS — esta rota só
  *     mexe em `ativo` e nos campos de assinatura;
@@ -37,7 +42,7 @@ export async function POST(request: Request) {
   //    seria mentira; aqui é erro do nosso lado → 500)
   const expectedToken = process.env.KIWIFY_WEBHOOK_TOKEN?.trim();
   if (!expectedToken) {
-    console.error('[kiwify] KIWIFY_WEBHOOK_TOKEN não definido');
+    console.error('[kiwify] segredo do webhook não definido nas variáveis de ambiente');
     return NextResponse.json(
       { ok: false, error: 'Webhook não configurado no servidor.' },
       { status: 500 },

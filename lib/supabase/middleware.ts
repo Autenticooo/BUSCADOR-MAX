@@ -37,8 +37,8 @@ export async function updateSession(request: NextRequest) {
   // APIs (webhook da Kiwify, health…) NUNCA recebem redirect de página:
   // quem chama é um servidor externo, não um navegador com sessão. Um 302
   // para /login (sem sessão) ou para /dashboard (com sessão) quebraria a
-  // integração. A autenticação dessas rotas é própria (ex.: KIWIFY_WEBHOOK_TOKEN
-  // validado dentro do route handler).
+  // integração. A autenticação dessas rotas é própria (um segredo validado
+  // dentro do respectivo route handler).
   if (request.nextUrl.pathname.startsWith('/api/')) {
     return supabaseResponse;
   }

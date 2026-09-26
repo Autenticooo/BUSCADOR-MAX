@@ -127,3 +127,28 @@ Respostas possíveis:
   liberadas de qualquer redirect (nem para `/login` sem sessão, nem para
   `/dashboard` com sessão), então a Kiwify sempre recebe a resposta HTTP
   direta do endpoint.
+
+### 4.1 Segredos e o scanner do Netlify
+
+`KIWIFY_WEBHOOK_TOKEN` e `SUPABASE_SERVICE_ROLE_KEY` são **server-only**:
+
+- lidos somente em `app/api/webhook/kiwify/route.ts` (route handler Node),
+  em runtime, via `process.env` — nenhum componente React/client os importa;
+- nunca use prefixo `NEXT_PUBLIC_` para eles (é isso que embute o valor no
+  bundle do cliente e dispara o scanner);
+- não existe referência no `next.config.ts` (`env`/`publicRuntimeConfig`) e
+  nenhum valor real no repositório (só placeholders em `.env.example` e aqui).
+
+Verificação feita no repositório: build com um valor canário → o valor **não
+aparece em nenhum arquivo de `.next/`** (nem em chunks de servidor nem em
+páginas). Se o Netlify reportar o segredo no build output, revise o **Site
+configuration → Environment variables**: provavelmente existe uma cópia da
+variável com prefixo `NEXT_PUBLIC_` ou o valor foi colado em algum arquivo
+público. Marque a variável como **secret** e rode *Clear cache and deploy*.
+
+Para repetir a verificação:
+
+```bash
+KIWIFY_WEBHOOK_TOKEN='CANARIO-123' npm run build
+grep -r "CANARIO-123" .next/   # não pode encontrar nada
+```

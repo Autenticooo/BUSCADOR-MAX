@@ -9,8 +9,8 @@ import { supabaseEnv } from './env';
  * ⚠️ Esta chave BYPASSA o RLS. Regras:
  *  - nunca importar em páginas, componentes ou Server Actions com sessão;
  *  - o "atores" dessas chamadas é o serviço externo, que já se autenticou
- *    pelo próprio segredo do webhook (KIWIFY_WEBHOOK_TOKEN);
- *  - a chave fica só em SUPABASE_SERVICE_ROLE_KEY (process.env, sem NEXT_PUBLIC).
+ *    pelo próprio segredo do webhook;
+ *  - a chave fica só no process.env do servidor (sem prefixo NEXT_PUBLIC).
  *
  * Devolve null quando a chave não está configurada — a rota decide a resposta.
  */

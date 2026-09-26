@@ -17,7 +17,8 @@ Sem landing page e sem página de vendas — o que existe é o sistema logado.
 
 | Rota | Acesso | O que faz |
 | --- | --- | --- |
-| `/login` | público | E-mail + senha → dashboard |
+| `/login` | público | E-mail + senha → dashboard (ou aviso de assinatura pendente) |
+| `/cadastro` | público | Criar conta (nome, e-mail, senha) — nasce com `ativo = false` e vê a mensagem de liberação pendente |
 | `/dashboard` | assinante | Total de produtos, adicionados hoje, em alta, meus favoritos, produtos em alta e últimos cadastros |
 | `/produtos` | assinante | Listagem em **tabela** ou **cards** com filtros |
 | `/produtos/[id]` | assinante | Detalhe + botão “Abrir produto TikTok Shop” |
@@ -39,9 +40,12 @@ A raiz `/` redireciona direto para `/dashboard` (o middleware faz o mesmo).
 A área de membros é paga. O campo `public.users.ativo` é o interruptor
 (`supabase/migrations/0002_assinatura.sql`):
 
-- **Cadastro novo nasce com `ativo = false`** (assinatura pendente). No login,
-  a resposta é *“…não possui uma assinatura ativa…”* e a sessão é encerrada na
-  hora — sem entrada no dashboard.
+- **Cadastro novo nasce com `ativo = false`** (assinatura pendente). O
+  cadastro é público em `/cadastro` (link na tela de login): cria o usuário no
+  Supabase Auth + o perfil em `public.users` e encerra com a mensagem
+  *"Conta criada. Seu acesso será liberado após a confirmação da assinatura."*
+  — sem liberar sessão. No login de uma conta pendente, a resposta é
+  *"…não possui uma assinatura ativa…"* e a sessão é encerrada na hora.
 - Mesmo com uma sessão válida (ex.: conta suspensa com a aba aberta), **todas
   as páginas internas** (dashboard, produtos, favoritos, perfil e admin) caem
   na tela *“Assinatura ativa necessária”* em vez do conteúdo.

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { supabaseEnv } from './env';
 
-const PUBLIC_PREFIXES = ['/login', '/auth', '/api/health'];
+const PUBLIC_PREFIXES = ['/login', '/cadastro', '/auth', '/api/health'];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some(

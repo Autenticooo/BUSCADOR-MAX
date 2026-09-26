@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { LoginForm } from '@/app/login/login-form';
 import { Logo } from '@/components/logo';
@@ -48,7 +49,16 @@ export default async function LoginPage({
           <LoginForm next={next} />
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-600">
+        <p className="mt-6 text-center text-sm text-slate-400">
+          Ainda não possui conta?{' '}
+          <Link
+            href="/cadastro"
+            className="font-semibold text-brand-cyan transition hover:text-brand-cyan/80"
+          >
+            Criar conta
+          </Link>
+        </p>
+        <p className="mt-4 text-center text-xs text-slate-600">
           Área restrita. O acesso é registrado e destinado apenas a assinantes ativos.
         </p>
       </div>

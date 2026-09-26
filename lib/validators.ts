@@ -40,14 +40,30 @@ const inteiro = z.coerce
   .default(0);
 
 // ---------------------------------------------------------------------------
-// Login
+// Login / Cadastro
 // ---------------------------------------------------------------------------
+/** E-mail normalizado (trim + minúsculas) reutilizado por login e cadastro */
+export const emailField = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  z.email({ error: 'E-mail inválido' }),
+);
+
 export const loginSchema = z.object({
-  email: z.preprocess(
-    (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
-    z.email({ error: 'E-mail inválido' }),
-  ),
+  email: emailField,
   password: z.string({ error: 'Senha é obrigatória' }).min(1, 'Senha é obrigatória'),
+});
+
+export const signupSchema = z.object({
+  nome: z
+    .string({ error: 'Nome é obrigatório' })
+    .trim()
+    .min(2, 'Informe pelo menos 2 caracteres')
+    .max(80, 'Máximo de 80 caracteres'),
+  email: emailField,
+  password: z
+    .string({ error: 'Senha é obrigatória' })
+    .min(6, 'Mínimo de 6 caracteres')
+    .max(72, 'Máximo de 72 caracteres'),
 });
 
 // ---------------------------------------------------------------------------

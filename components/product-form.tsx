@@ -48,30 +48,42 @@ export function ProductForm({ product }: { product?: Product }) {
     setFieldErrors({});
 
     startTransition(async () => {
-      const action = product
-        ? updateProductAction(product.id, formData)
-        : createProductAction(formData);
+      try {
+        const response = await (product
+          ? updateProductAction(product.id, formData)
+          : createProductAction(formData));
 
-      const response = await action;
-      setResult(response);
+        setResult(response);
 
-      if (!response.ok) {
-        setFieldErrors(response.fieldErrors ?? {});
-        return;
-      }
+        if (!response.ok) {
+          setFieldErrors(response.fieldErrors ?? {});
+          return;
+        }
 
-      if (product) {
-        router.push('/admin');
-        router.refresh();
-      } else {
-        setSavedId('new');
-        // `form` (capturado acima) em vez de event.currentTarget, que já é null.
-        form.reset();
-        setMetrics({ gvm_max: 0, videos_criadores: 0, quantidade_criadores: 0 });
-        setManualScore('');
-        router.refresh();
+        if (product) {
+          router.push('/admin');
+          router.refresh();
+        } else {
+          setSavedId('new');
+          // `form` (capturado acima) em vez de event.currentTarget, que já é null.
+          form.reset();
+          setMetrics({ gvm_max: 0, videos_criadores: 0, quantidade_criadores: 0 });
+          setManualScore('');
+          router.refresh();
+        }
+      } catch (error) {
+        // Server Actions podem falhar antes de devolver um ActionResult (por
+        // exemplo, em uma queda momentânea do Supabase). Isso não deve virar
+        // uma rejeição assíncrona sem tratamento no navegador.
+        setResult({ ok: false, error: getActionErrorMessage(error) });
       }
     });
+  }
+
+  function getActionErrorMessage(error: unknown) {
+    return error instanceof Error && error.message
+      ? error.message
+      : 'Não foi possível salvar o produto. Tente novamente.';
   }
 
   const error = (field: string) =>

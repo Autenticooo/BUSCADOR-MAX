@@ -16,6 +16,8 @@
  *   3. acesso à área admin
  *   4. CRUD de produtos
  *   5. permissões de usuário comum x administrador
+ *   6. paywall: cadastro novo nasce com ativo=false, não lê a base nem se
+ *      auto-ativa; a liberação manual (ativo=true) devolve o acesso
  *
  * Nenhuma credencial é impressa na saída.
  */
@@ -229,7 +231,25 @@ async function main() {
     if (data.role !== 'admin') {
       throw new Error(
         `role='${data.role}'. O UPDATE provavelmente rodou antes do perfil existir e ` +
-          `afetou 0 linhas. Rode: update public.users set role='admin' where id='${adminId}';`,
+          `afetou 0 linhas. Rode: update public.users set role='admin', ativo=true where id='${adminId}';`,
+      );
+    }
+    return 'ok';
+  });
+
+  await check('admin tem ativo = true (exigido pelo is_admin() para o CRUD)', async () => {
+    const { data, error } = await adminClient
+      .from('users')
+      .select('ativo')
+      .eq('id', adminId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('perfil não encontrado em public.users');
+    if (data.ativo !== true) {
+      throw new Error(
+        `ativo=${data.ativo}. Desde a migration 0002 todo cadastro nasce com ativo=false. ` +
+          `Admin entra na interface mesmo assim (role='admin'), mas o CRUD de produtos ` +
+          `exige ativo=true. Rode: update public.users set role='admin', ativo=true where id='${adminId}';`,
       );
     }
     return 'ok';
@@ -375,10 +395,12 @@ async function main() {
   });
 
   if (userClient && userId) {
+    let contaAtiva = null;
+
     await check('perfil do usuário comum foi criado com role=user', async () => {
       const { data, error } = await userClient
         .from('users')
-        .select('role, nome')
+        .select('role, nome, ativo')
         .eq('id', userId)
         .maybeSingle();
       if (error) throw new Error(error.message);
@@ -389,8 +411,64 @@ async function main() {
         );
       }
       assert(data.role === 'user', `role='${data.role}', esperado 'user'`);
-      return `role=user · nome=${data.nome}`;
+      contaAtiva = data.ativo === true;
+      return `role=user · nome=${data.nome} · ativo=${data.ativo}`;
     });
+
+    // ---- paywall (migration 0002) ------------------------------------------
+    if (contaAtiva === false && tempUserEmail) {
+      await check('paywall: conta nova nasce com ativo = false', async () => {
+        assert(contaAtiva === false, 'conta criada já ativa — o padrão mudou?');
+        return 'assinatura pendente por padrão';
+      });
+
+      await check('paywall: sem assinatura ativa NÃO vê a base de produtos', async () => {
+        const { count, error } = await userClient
+          .from('products')
+          .select('id', { head: true, count: 'exact' });
+        if (error) throw new Error(error.message);
+        assert(count === 0, `esperava 0 produtos visíveis, vieram ${count}`);
+        return '0 linhas visíveis (RLS exige has_active_subscription())';
+      });
+
+      await check('paywall: usuário NÃO consegue ativar a própria conta', async () => {
+        const { error } = await userClient
+          .from('users')
+          .update({ ativo: true })
+          .eq('id', userId);
+        assert(error, 'o update passou sem erro — conta se auto-ativou?');
+        const { data } = await userClient
+          .from('users')
+          .select('ativo')
+          .eq('id', userId)
+          .maybeSingle();
+        assert(data && data.ativo === false, 'a conta foi auto-ativada!');
+        return `bloqueado (${error.code ?? error.message})`;
+      });
+
+      await check('paywall: admin libera o acesso (ativo = true)', async () => {
+        const { error } = await adminClient
+          .from('users')
+          .update({ ativo: true })
+          .eq('id', userId);
+        if (error) throw new Error(`admin não conseguiu liberar: ${error.message}`);
+        const { data } = await userClient
+          .from('users')
+          .select('ativo')
+          .eq('id', userId)
+          .maybeSingle();
+        assert(data?.ativo === true, 'a conta continua inativa após a liberação');
+        contaAtiva = true;
+        return 'assinatura ativada — acesso devolvido';
+      });
+    } else if (contaAtiva === false && !tempUserEmail) {
+      await check('paywall: conta informada está inativa', async () => {
+        skip(
+          'USER_EMAIL informado está com ativo=false. Para validar as permissões de ' +
+            'leitura, libere antes: update public.users set ativo=true where email=...',
+        );
+      });
+    }
 
     await check('vê a base de produtos (SELECT liberado)', async () => {
       const { count, error } = await userClient

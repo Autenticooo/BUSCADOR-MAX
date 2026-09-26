@@ -18,6 +18,7 @@ describe('schema do BUSCADOR MAX', () => {
   let adminId: string;
   let userId: string;
   let otherUserId: string;
+  let inactiveUserId: string;
 
   beforeAll(async () => {
     db = await createTestDatabase();
@@ -28,8 +29,13 @@ describe('schema do BUSCADOR MAX', () => {
     });
     userId = await createAuthUser(db, 'assinante@buscadormax.com', {
       nome: 'Ana Assinante',
+      ativo: true, // assinatura ativa (migration 0002: o padrão agora é false)
     });
-    otherUserId = await createAuthUser(db, 'outra@buscadormax.com');
+    otherUserId = await createAuthUser(db, 'outra@buscadormax.com', { ativo: true });
+    // assinatura pendente: sem opção, nasce com ativo = false
+    inactiveUserId = await createAuthUser(db, 'pendente@buscadormax.com', {
+      nome: 'Sem Assinatura',
+    });
   });
 
   afterAll(async () => {
@@ -270,6 +276,167 @@ describe('schema do BUSCADOR MAX', () => {
     expect(deleted.rows).toHaveLength(1);
   });
 
+  // -------------------------------------------------------------------------
+  // PAYWALL (migration 0002): acesso só com assinatura ativa
+  // -------------------------------------------------------------------------
+
+  it('novo cadastro nasce com ativo = false e role = user', async () => {
+    await asRole(db, 'postgres');
+    const { rows } = await db.query<{ ativo: boolean; role: string }>(
+      `select ativo, role from public.users where id = $1`,
+      [inactiveUserId],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].ativo).toBe(false);
+    expect(rows[0].role).toBe('user');
+  });
+
+  it('usuário sem assinatura ativa NÃO lê a base de produtos (RLS)', async () => {
+    await asRole(db, 'authenticated', inactiveUserId);
+    const { rows } = await db.query<{ count: string }>(
+      'select count(*)::text as count from public.products',
+    );
+    expect(Number(rows[0].count)).toBe(0);
+  });
+
+  it('usuário sem assinatura ativa NÃO consegue favoritar (RLS)', async () => {
+    await asRole(db, 'postgres');
+    const { rows } = await db.query<{ id: string }>(
+      `select id from public.products order by nome limit 1`,
+    );
+    const productId = String(rows[0].id);
+
+    await asRole(db, 'authenticated', inactiveUserId);
+    const error = await expectFailure(() =>
+      db.query(`insert into public.favorites (user_id, product_id) values ($1, $2)`, [
+        inactiveUserId,
+        productId,
+      ]),
+    );
+    expect(error.code).toBe('42501');
+  });
+
+  it('usuário sem assinatura ativa continua lendo o PRÓPRIO perfil', async () => {
+    // a aplicação precisa dessa leitura para exibir a tela de bloqueio
+    await asRole(db, 'authenticated', inactiveUserId);
+    const { rows } = await db.query<{ ativo: boolean }>(
+      `select ativo from public.users where id = $1`,
+      [inactiveUserId],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].ativo).toBe(false);
+  });
+
+  it('usuário comum NÃO consegue ativar a própria assinatura', async () => {
+    await asRole(db, 'authenticated', inactiveUserId);
+    const error = await expectFailure(() =>
+      db.query(`update public.users set ativo = true where id = $1`, [inactiveUserId]),
+    );
+    expect(error.code).toBe('42501');
+
+    const { rows } = await db.query<{ ativo: boolean }>(
+      `select ativo from public.users where id = $1`,
+      [inactiveUserId],
+    );
+    expect(rows[0].ativo).toBe(false);
+  });
+
+  it('liberação manual (admin no SQL Editor) devolve o acesso', async () => {
+    await asRole(db, 'postgres');
+    await db.query(`update public.users set ativo = true where id = $1`, [inactiveUserId]);
+
+    await asRole(db, 'authenticated', inactiveUserId);
+    const { rows } = await db.query<{ count: string }>(
+      'select count(*)::text as count from public.products',
+    );
+    expect(Number(rows[0].count)).toBeGreaterThan(0);
+
+    // volta ao estado pendente para os demais testes
+    await asRole(db, 'postgres');
+    await db.query(`update public.users set ativo = false where id = $1`, [inactiveUserId]);
+  });
+
+  it('admin continua acessando o catálogo mesmo com ativo = false', async () => {
+    await asRole(db, 'postgres');
+    await db.query(`update public.users set ativo = false where id = $1`, [adminId]);
+
+    await asRole(db, 'authenticated', adminId);
+    const { rows } = await db.query<{ count: string }>(
+      'select count(*)::text as count from public.products',
+    );
+    expect(Number(rows[0].count)).toBeGreaterThan(0);
+
+    await asRole(db, 'postgres');
+    await db.query(`update public.users set ativo = true where id = $1`, [adminId]);
+  });
+
+  it('public.users tem as colunas de assinatura da Kiwify (migration 0003)', async () => {
+    await asRole(db, 'postgres');
+    const { rows } = await db.query<{ column_name: string }>(
+      `select column_name
+         from information_schema.columns
+        where table_schema = 'public' and table_name = 'users'`,
+    );
+
+    const columns = rows.map((row) => row.column_name);
+    expect(columns).toEqual(
+      expect.arrayContaining(['plano', 'assinatura_desde', 'kiwify_transaction_id']),
+    );
+  });
+
+  it('dados de assinatura: serviço/admin grava, usuário comum NÃO altera', async () => {
+    // o webhook roda com service role (auth.uid() nulo): grava livremente
+    await asRole(db, 'postgres');
+    await db.query(
+      `update public.users
+          set plano = 'BUSCADOR MAX — Mensal',
+              assinatura_desde = '2026-09-20T14:32:10Z',
+              kiwify_transaction_id = 'ord_123'
+        where id = $1`,
+      [userId],
+    );
+
+    // usuário comum tentando se dar um plano "de graça": negado
+    await asRole(db, 'authenticated', userId);
+    const error = await expectFailure(() =>
+      db.query(`update public.users set plano = 'Plano de Graça' where id = $1`, [userId]),
+    );
+    expect(error.code).toBe('42501');
+
+    const { rows } = await db.query<{ plano: string }>(
+      `select plano from public.users where id = $1`,
+      [userId],
+    );
+    expect(rows[0].plano).toBe('BUSCADOR MAX — Mensal');
+
+    // ...mas continua podendo atualizar os dados comuns do próprio perfil
+    const { rows: nomeRows } = await db.query<{ nome: string }>(
+      `update public.users set nome = 'Ana Assinante' where id = $1 returning nome`,
+      [userId],
+    );
+    expect(nomeRows[0].nome).toBe('Ana Assinante');
+  });
+
+  it('has_active_subscription() responde corretamente por cenário', async () => {
+    await asRole(db, 'authenticated', adminId);
+    const admin = await db.query<{ ok: boolean }>('select public.has_active_subscription() as ok');
+    expect(admin.rows[0].ok).toBe(true);
+
+    await asRole(db, 'authenticated', userId);
+    const ativo = await db.query<{ ok: boolean }>('select public.has_active_subscription() as ok');
+    expect(ativo.rows[0].ok).toBe(true);
+
+    await asRole(db, 'authenticated', inactiveUserId);
+    const pendente = await db.query<{ ok: boolean }>(
+      'select public.has_active_subscription() as ok',
+    );
+    expect(pendente.rows[0].ok).toBe(false);
+
+    await asRole(db, 'anon');
+    const anon = await db.query<{ ok: boolean }>('select public.has_active_subscription() as ok');
+    expect(anon.rows[0].ok).toBe(false);
+  });
+
   it('assinante não consegue promover o próprio perfil a admin', async () => {
     await asRole(db, 'authenticated', userId);
     const error = await expectFailure(() =>
@@ -316,7 +483,7 @@ describe('schema do BUSCADOR MAX', () => {
     const { rows } = await db.query<{ id: string }>(
       `select id from public.users order by email`,
     );
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
   });
 
   it('favoritos: usuário salva, lê e remove apenas os próprios', async () => {

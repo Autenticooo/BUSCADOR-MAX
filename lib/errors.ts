@@ -49,6 +49,10 @@ export function translateAuthError(error: AuthLikeError | string): string {
     return 'Confirme seu e-mail antes de entrar.';
   }
 
+  if (/user already registered|already been registered|already in use/i.test(message)) {
+    return 'Este e-mail já está cadastrado. Use a tela de login para entrar.';
+  }
+
   if (/rate limit|too many requests/i.test(message)) {
     return 'Muitas tentativas seguidas. Aguarde alguns minutos.';
   }

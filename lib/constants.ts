@@ -6,6 +6,22 @@ import type { ProductStatus } from './types';
 
 export const APP_NAME = 'BUSCADOR MAX';
 
+/**
+ * Mensagem do paywall exibida quando a conta existe mas não tem assinatura
+ * ativa (users.ativo = false). Usada no login e na tela de bloqueio.
+ * Fica FORA de app/actions/* porque módulos 'use server' só exportam funções.
+ */
+export const SUBSCRIPTION_REQUIRED_MESSAGE =
+  'Sua conta ainda não possui uma assinatura ativa. É necessário ter uma assinatura ativa para acessar o BUSCADOR MAX. Assim que o pagamento for confirmado, a administração libera o seu acesso.';
+
+/**
+ * Mensagem exibida na página /cadastro quando a conta é criada. O perfil nasce
+ * com ativo = false (pendente): o acesso só é liberado quando a administração
+ * confirma a assinatura.
+ */
+export const ACCOUNT_CREATED_MESSAGE =
+  'Conta criada. Seu acesso será liberado após a confirmação da assinatura.';
+
 /** Itens por página na listagem de produtos */
 export const PAGE_SIZE = 12;
 

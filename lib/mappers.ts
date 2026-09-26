@@ -44,7 +44,8 @@ export function mapProfile(row: Record<string, unknown> | null): UserProfile | n
     email: String(row.email ?? ''),
     nome: (row.nome as string | null) ?? null,
     role: row.role === 'admin' ? 'admin' : 'user',
-    ativo: row.ativo !== false,
+    // fail-closed: se o campo não vier por algum motivo, assume sem assinatura
+    ativo: row.ativo === true,
     created_at: String(row.created_at ?? ''),
     updated_at: String(row.updated_at ?? ''),
   };

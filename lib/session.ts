@@ -54,6 +54,15 @@ export async function requireProfile(): Promise<UserProfile> {
 }
 
 /**
+ * Regra do paywall: admin sempre entra; usuário comum só com ativo = true
+ * (assinatura ativa). Espelhada no banco por public.has_active_subscription()
+ * (supabase/migrations/0002_assinatura.sql).
+ */
+export function hasActiveSubscription(profile: UserProfile): boolean {
+  return profile.role === 'admin' || profile.ativo;
+}
+
+/**
  * Perfil do usuário logado **se** ele for admin; `null` para assinante comum
  * ou visitante. Não lança notFound(): a área /admin usa este helper para
  * renderizar <AdminAccessDenied /> em vez de um 404.

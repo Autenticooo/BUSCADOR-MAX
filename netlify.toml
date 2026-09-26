@@ -7,6 +7,15 @@
 # Elas são embutidas no bundle EM TEMPO DE BUILD — depois de mudar qualquer uma,
 # rode "Deploys > Trigger deploy > Clear cache and deploy site".
 #
+# SEGREDOS (somente servidor — lidos em runtime, nunca vão para o bundle):
+#   SUPABASE_SERVICE_ROLE_KEY   (webhook Kiwify)
+#   KIWIFY_WEBHOOK_TOKEN        (webhook Kiwify)
+# Marque-os como "secret" no Netlify e NUNCA crie cópias com prefixo
+# NEXT_PUBLIC_ — é isso que o scanner de segredos flagra: valores presentes
+# no output do build. Neste código os dois só são lidos dentro de route
+# handlers Node (`app/api/webhook/kiwify/route.ts`), comprovado por build de
+# verificação (o valor não aparece em .next).
+#
 # Depois do primeiro deploy, cadastre o domínio em
 #   Supabase > Authentication > URL Configuration > Site URL e Redirect URLs
 # ============================================================================

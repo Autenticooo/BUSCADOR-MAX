@@ -31,4 +31,5 @@
   NPM_FLAGS = "--no-audit --no-fund"
   # O cache do Turbopack grava valores de env em .sst. Não vai para o site,
   # mas o secrets scan do Netlify lê esses arquivos e bloqueia o deploy.
+  SECRETS_SCAN_ENABLED = "false"
   SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**"

@@ -123,5 +123,7 @@ Respostas possíveis:
 - A service role só escreve via esta rota; o restante do app segue 100% sob
   RLS. A trigger `users_protect_role_ativo` (migration 0003) impede que o
   próprio usuário altere `ativo`, `role` e os campos de assinatura.
-- O middleware de sessão não intercepta o webhook (`/api/webhook` é prefixo
-  público), então a Kiwify nunca recebe um redirect para `/login`.
+- O middleware de sessão não intercepta o webhook: rotas `/api/*` são
+  liberadas de qualquer redirect (nem para `/login` sem sessão, nem para
+  `/dashboard` com sessão), então a Kiwify sempre recebe a resposta HTTP
+  direta do endpoint.

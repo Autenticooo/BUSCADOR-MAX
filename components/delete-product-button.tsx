@@ -27,13 +27,21 @@ export function DeleteProductButton({
 
     setError(null);
     startTransition(async () => {
-      const result = await deleteProductAction(productId);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await deleteProductAction(productId);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        router.push(redirectTo);
+        router.refresh();
+      } catch (error) {
+        setError(
+          error instanceof Error && error.message
+            ? error.message
+            : 'Não foi possível excluir o produto. Tente novamente.',
+        );
       }
-      router.push(redirectTo);
-      router.refresh();
     });
   }
 

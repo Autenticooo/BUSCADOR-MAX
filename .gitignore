@@ -31,3 +31,7 @@ yarn-error.log*
 
 # dados de teste locais (pglite)
 /.pgdata
+
+# cache do Netlify e do Turbopack
+.netlify/
+.turbo/

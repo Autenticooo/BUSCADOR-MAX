@@ -5,7 +5,7 @@
   "description": "SaaS interno de busca de produtos TikTok Shop com métricas (GVM Max, criadores, MAX SCORE)",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p ${PORT:-3000}",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

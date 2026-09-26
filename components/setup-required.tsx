@@ -45,8 +45,8 @@ supabase/seed.sql`}</Code>
             title="3. Crie o usuário e promova a admin"
             body={
               <Code>{`# Authentication > Users > Add user (email + senha)
-# depois, no SQL Editor:
-update public.users set role = 'admin'
+# depois, no SQL Editor (role admin + libera a assinatura):
+update public.users set role = 'admin', ativo = true
 where email = 'seu@email.com';`}</Code>
             }
           />

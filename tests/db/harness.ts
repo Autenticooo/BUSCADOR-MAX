@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
 
-export const MIGRATION_PATH = join(ROOT, 'supabase/migrations/0001_init.sql');
+const MIGRATIONS_DIR = join(ROOT, 'supabase/migrations');
 export const SEED_PATH = join(ROOT, 'supabase/seed.sql');
 
 export type Role = 'postgres' | 'anon' | 'authenticated';
@@ -44,16 +44,24 @@ export async function createTestDatabase(): Promise<PGliteType> {
     grant select on auth.users to authenticated, service_role;
   `);
 
-  await db.exec(readFileSync(MIGRATION_PATH, 'utf8'));
+  // aplica TODAS as migrations do projeto, na ordem (0001_init, 0002_assinatura, ...)
+  const { readdirSync } = await import('node:fs');
+  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()) {
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, file), 'utf8'));
+  }
 
   return db;
 }
 
-/** Cria o usuário no Auth (dispara o trigger que cria o perfil) */
+/**
+ * Cria o usuário no Auth (dispara o trigger que cria o perfil).
+ * Desde a migration 0002, todo perfil nasce com ativo = false (assinatura
+ * pendente): use `ativo: true` para simular um assinante com acesso liberado.
+ */
 export async function createAuthUser(
   db: PGliteType,
   email: string,
-  options: { admin?: boolean; nome?: string } = {},
+  options: { admin?: boolean; nome?: string; ativo?: boolean } = {},
 ): Promise<string> {
   const result = await db.query<{ id: string }>(
     `insert into auth.users (email, raw_user_meta_data)
@@ -65,7 +73,12 @@ export async function createAuthUser(
   const id = String(result.rows[0].id);
 
   if (options.admin) {
-    await db.query(`update public.users set role = 'admin' where id = $1`, [id]);
+    // o CRUD de produtos via is_admin() exige role = 'admin' E ativo = true
+    await db.query(`update public.users set role = 'admin', ativo = true where id = $1`, [id]);
+  }
+
+  if (options.ativo !== undefined) {
+    await db.query(`update public.users set ativo = $2 where id = $1`, [id, options.ativo]);
   }
 
   return id;

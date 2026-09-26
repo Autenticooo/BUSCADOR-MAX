@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
+import { SUBSCRIPTION_REQUIRED_MESSAGE } from '@/lib/constants';
 import { translateAuthError } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 import { supabaseEnv } from '@/lib/supabase/env';
@@ -58,6 +59,23 @@ export async function signInAction(
       p_nome: null,
     });
     if (rpcError) console.error('[signInAction:ensure_profile]', rpcError.message);
+
+    // paywall: usuário comum precisa de assinatura ativa (ativo = true).
+    // role = 'admin' entra independentemente do campo ativo.
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role, ativo')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile && profile.role !== 'admin' && profile.ativo !== true) {
+      // derruba a sessão recém-criada: sem assinatura, sem área de membros
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        error: SUBSCRIPTION_REQUIRED_MESSAGE,
+      };
+    }
   }
 
   const next = String(formData.get('next') ?? '') || '/dashboard';

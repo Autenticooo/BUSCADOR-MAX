@@ -34,6 +34,33 @@ A raiz `/` redireciona direto para `/dashboard` (o middleware faz o mesmo).
 > de um 404 — o assinante entende o motivo em vez de achar que a página não existe.
 > As Server Actions continuam recusando criar/editar/excluir para quem não é admin.
 
+### Acesso por assinatura (paywall)
+
+A área de membros é paga. O campo `public.users.ativo` é o interruptor
+(`supabase/migrations/0002_assinatura.sql`):
+
+- **Cadastro novo nasce com `ativo = false`** (assinatura pendente). No login,
+  a resposta é *“…não possui uma assinatura ativa…”* e a sessão é encerrada na
+  hora — sem entrada no dashboard.
+- Mesmo com uma sessão válida (ex.: conta suspensa com a aba aberta), **todas
+  as páginas internas** (dashboard, produtos, favoritos, perfil e admin) caem
+  na tela *“Assinatura ativa necessária”* em vez do conteúdo.
+- O RLS do Postgres fecha o cerco: sem assinatura ativa, a base de produtos e
+  os favoritos **não respondem nada nem direto pela API**, e o usuário não
+  consegue alterar o próprio `ativo`/`role` (trigger `users_protect_role_ativo`).
+- **`role = 'admin'` sempre entra**, independente do `ativo`. (Para o CRUD de
+  produtos a função `is_admin()` do RLS continua exigindo `ativo = true`.)
+
+Liberar ou suspender um assinante, hoje, é manual (SQL Editor):
+
+```sql
+update public.users set ativo = true  where email = 'cliente@exemplo.com';  -- libera
+update public.users set ativo = false where email = 'cliente@exemplo.com';  -- suspende
+```
+
+> A liberação automática via gateway de pagamento (webhook de checkout) é uma
+> etapa futura; esta versão implementa apenas o controle pelo campo `ativo`.
+
 ### Filtros da listagem
 
 Busca por nome/descrição/categoria · **categoria** · **país** · **status** ·
@@ -85,9 +112,11 @@ Supabase”** em vez de fingir que funciona.
 No Supabase: **SQL Editor → New query**, cole e execute nesta ordem:
 
 1. `supabase/migrations/0001_init.sql` — tabelas, funções, triggers e RLS
-2. `supabase/seed.sql` *(opcional)* — 20 produtos de exemplo
+2. `supabase/migrations/0002_assinatura.sql` — paywall: `ativo` passa a nascer
+   `false`, RLS exige assinatura ativa, trava contra auto-alteração de `role/ativo`
+3. `supabase/seed.sql` *(opcional)* — 20 produtos de exemplo
 
-Ambos são **idempotentes** (podem rodar mais de uma vez).
+Todos são **idempotentes** (podem rodar mais de uma vez).
 
 ### 3.3 Primeiro usuário e admin
 
@@ -97,8 +126,15 @@ Ambos são **idempotentes** (podem rodar mais de uma vez).
 3. No **SQL Editor**:
 
 ```sql
-update public.users set role = 'admin' where email = 'seu@email.com';
+update public.users set role = 'admin', ativo = true where email = 'seu@email.com';
 ```
+
+> Desde a migration 0002 **todo cadastro nasce com `ativo = false`** (acesso
+> bloqueado até a liberação). O comando acima promove a admin **e** já libera o
+> acesso dela — o role `admin` entra na interface mesmo com `ativo = false`,
+> mas o CRUD de produtos via `is_admin()` exige os dois.
+> Para liberar assinantes comuns, basta o `ativo = true` (ver
+> *Acesso por assinatura*, acima).
 
 > Se o seu projeto não permitir trigger em `auth.users`, tudo bem: o login chama
 > a RPC `public.ensure_profile()` como fallback e o perfil é criado do mesmo jeito.
@@ -112,15 +148,15 @@ ADMIN_EMAIL=voce@exemplo.com ADMIN_PASSWORD='sua-senha' npm run validate
 ```
 
 O script `scripts/validate-integration.mjs` roda **contra o seu projeto real** e
-cobre **24 verificações** em 6 blocos (13 quando o bloco do usuário comum é pulado):
+cobre **29 verificações** em 6 blocos (14 quando o bloco do usuário comum é pulado):
 
 | bloco | o que prova |
 | --- | --- |
 | 0. Conectividade | o servidor alcança o Supabase e `public.products` existe |
 | 1. Login | `signInWithPassword` devolve sessão para o admin |
-| 2. Área admin | perfil existe, `role='admin'` e `is_admin()` responde `true` |
+| 2. Área admin | perfil existe, `role='admin'`, `ativo=true` e `is_admin()` responde `true` |
 | 3. CRUD | create → read → update → delete, com o trigger recalculando o MAX SCORE (50 → 100) |
-| 4. Usuário comum | lê a base; **não** cria/edita/exclui; **não** se promove a admin; favoritos só os próprios |
+| 4. Usuário comum | **paywall**: conta nova nasce com `ativo=false`, não lê a base, não se auto-ativa e volta a ler após a liberação; depois lê a base; **não** cria/edita/exclui; **não** se promove a admin; favoritos só os próprios |
 | 5. Limpeza | remove o produto de teste |
 
 Detalhes:

@@ -31,6 +31,19 @@ export async function GET(request: Request) {
           p_nome: (user.user_metadata?.nome as string | undefined) ?? null,
         });
         if (rpcError) console.error('[auth/callback:ensure_profile]', rpcError.message);
+
+        // paywall (mesma regra do login por senha): sem assinatura ativa,
+        // a sessão é encerrada e o usuário volta para o login avisado.
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role, ativo')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile && profile.role !== 'admin' && profile.ativo !== true) {
+          await supabase.auth.signOut();
+          return NextResponse.redirect(`${origin}/login?error=assinatura`);
+        }
       }
 
       return NextResponse.redirect(`${origin}${next}`);

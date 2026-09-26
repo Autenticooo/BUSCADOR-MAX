@@ -44,7 +44,7 @@ export function AdminAccessDenied({ email }: { email?: string }) {
             Peça a um administrador para promover o seu perfil no SQL Editor do Supabase:
           </p>
           <code className="mt-2 block overflow-x-auto rounded-lg border border-white/8 bg-ink-950/80 p-2 text-[11px] text-brand-cyan">
-            update public.users set role = &apos;admin&apos; where email = &apos;seu@email.com&apos;;
+            update public.users set role = &apos;admin&apos;, ativo = true where email = &apos;seu@email.com&apos;;
           </code>
         </div>
 

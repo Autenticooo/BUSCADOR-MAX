@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { LoginForm } from '@/app/login/login-form';
 import { Logo } from '@/components/logo';
 import { SetupRequired } from '@/components/setup-required';
+import { SUBSCRIPTION_REQUIRED_MESSAGE } from '@/lib/constants';
 import { supabaseEnv } from '@/lib/supabase/env';
 
 export const metadata: Metadata = { title: 'Entrar' };
@@ -38,7 +39,9 @@ export default async function LoginPage({
 
           {params.error ? (
             <p className="mt-4 rounded-xl border border-brand-pink/40 bg-brand-pink/10 px-4 py-3 text-sm text-brand-pink">
-              Não foi possível validar seu acesso. Tente novamente.
+              {params.error === 'assinatura'
+                ? SUBSCRIPTION_REQUIRED_MESSAGE
+                : 'Não foi possível validar seu acesso. Tente novamente.'}
             </p>
           ) : null}
 

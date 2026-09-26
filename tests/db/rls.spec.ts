@@ -370,6 +370,53 @@ describe('schema do BUSCADOR MAX', () => {
     await db.query(`update public.users set ativo = true where id = $1`, [adminId]);
   });
 
+  it('public.users tem as colunas de assinatura da Kiwify (migration 0003)', async () => {
+    await asRole(db, 'postgres');
+    const { rows } = await db.query<{ column_name: string }>(
+      `select column_name
+         from information_schema.columns
+        where table_schema = 'public' and table_name = 'users'`,
+    );
+
+    const columns = rows.map((row) => row.column_name);
+    expect(columns).toEqual(
+      expect.arrayContaining(['plano', 'assinatura_desde', 'kiwify_transaction_id']),
+    );
+  });
+
+  it('dados de assinatura: serviço/admin grava, usuário comum NÃO altera', async () => {
+    // o webhook roda com service role (auth.uid() nulo): grava livremente
+    await asRole(db, 'postgres');
+    await db.query(
+      `update public.users
+          set plano = 'BUSCADOR MAX — Mensal',
+              assinatura_desde = '2026-09-20T14:32:10Z',
+              kiwify_transaction_id = 'ord_123'
+        where id = $1`,
+      [userId],
+    );
+
+    // usuário comum tentando se dar um plano "de graça": negado
+    await asRole(db, 'authenticated', userId);
+    const error = await expectFailure(() =>
+      db.query(`update public.users set plano = 'Plano de Graça' where id = $1`, [userId]),
+    );
+    expect(error.code).toBe('42501');
+
+    const { rows } = await db.query<{ plano: string }>(
+      `select plano from public.users where id = $1`,
+      [userId],
+    );
+    expect(rows[0].plano).toBe('BUSCADOR MAX — Mensal');
+
+    // ...mas continua podendo atualizar os dados comuns do próprio perfil
+    const { rows: nomeRows } = await db.query<{ nome: string }>(
+      `update public.users set nome = 'Ana Assinante' where id = $1 returning nome`,
+      [userId],
+    );
+    expect(nomeRows[0].nome).toBe('Ana Assinante');
+  });
+
   it('has_active_subscription() responde corretamente por cenário', async () => {
     await asRole(db, 'authenticated', adminId);
     const admin = await db.query<{ ok: boolean }>('select public.has_active_subscription() as ok');

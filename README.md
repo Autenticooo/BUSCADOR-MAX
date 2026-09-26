@@ -55,15 +55,18 @@ A área de membros é paga. O campo `public.users.ativo` é o interruptor
 - **`role = 'admin'` sempre entra**, independente do `ativo`. (Para o CRUD de
   produtos a função `is_admin()` do RLS continua exigindo `ativo = true`.)
 
-Liberar ou suspender um assinante, hoje, é manual (SQL Editor):
+Liberar ou suspender manualmente (SQL Editor):
 
 ```sql
 update public.users set ativo = true  where email = 'cliente@exemplo.com';  -- libera
 update public.users set ativo = false where email = 'cliente@exemplo.com';  -- suspende
 ```
 
-> A liberação automática via gateway de pagamento (webhook de checkout) é uma
-> etapa futura; esta versão implementa apenas o controle pelo campo `ativo`.
+> **Liberação automática (Kiwify):** o webhook `POST /api/webhook/kiwify`
+> ativa o acesso quando a compra é aprovada (`ativo = true`, gravando plano,
+> data e transação) e desativa em reembolso, chargeback, cancelamento e
+> atraso da assinatura. Configuração completa em
+> **[docs/kiwify-webhook.md](docs/kiwify-webhook.md)**.
 
 ### Filtros da listagem
 
@@ -118,7 +121,9 @@ No Supabase: **SQL Editor → New query**, cole e execute nesta ordem:
 1. `supabase/migrations/0001_init.sql` — tabelas, funções, triggers e RLS
 2. `supabase/migrations/0002_assinatura.sql` — paywall: `ativo` passa a nascer
    `false`, RLS exige assinatura ativa, trava contra auto-alteração de `role/ativo`
-3. `supabase/seed.sql` *(opcional)* — 20 produtos de exemplo
+3. `supabase/migrations/0003_kiwify.sql` — colunas de assinatura (plano, data,
+   transação) preenchidas pelo webhook da Kiwify
+4. `supabase/seed.sql` *(opcional)* — 20 produtos de exemplo
 
 Todos são **idempotentes** (podem rodar mais de uma vez).
 

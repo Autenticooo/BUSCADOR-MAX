@@ -29,6 +29,11 @@ Sem landing page e sem página de vendas — o que existe é o sistema logado.
 
 A raiz `/` redireciona direto para `/dashboard` (o middleware faz o mesmo).
 
+> **Sem permissão de admin**, `/admin` e suas subrotas mostram o aviso
+> *Acesso de administrador necessário* (`components/admin-access-denied.tsx`) em vez
+> de um 404 — o assinante entende o motivo em vez de achar que a página não existe.
+> As Server Actions continuam recusando criar/editar/excluir para quem não é admin.
+
 ### Filtros da listagem
 
 Busca por nome/descrição/categoria · **categoria** · **país** · **status** ·

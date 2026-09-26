@@ -1,23 +1,5 @@
 # ============================================================================
 # BUSCADOR MAX — configuração de deploy no Netlify
-#
-# IMPORTANTE: defina também no Netlify (Site configuration > Environment variables)
-#   NEXT_PUBLIC_SUPABASE_URL
-#   NEXT_PUBLIC_SUPABASE_ANON_KEY
-# Elas são embutidas no bundle EM TEMPO DE BUILD — depois de mudar qualquer uma,
-# rode "Deploys > Trigger deploy > Clear cache and deploy site".
-#
-# SEGREDOS (somente servidor — lidos em runtime, nunca vão para o bundle):
-#   SUPABASE_SERVICE_ROLE_KEY   (webhook Kiwify)
-#   KIWIFY_WEBHOOK_TOKEN        (webhook Kiwify)
-# Marque-os como "secret" no Netlify e NUNCA crie cópias com prefixo
-# NEXT_PUBLIC_ — é isso que o scanner de segredos flagra: valores presentes
-# no output do build. Neste código os dois só são lidos dentro de route
-# handlers Node (`app/api/webhook/kiwify/route.ts`), comprovado por build de
-# verificação (o valor não aparece em .next).
-#
-# Depois do primeiro deploy, cadastre o domínio em
-#   Supabase > Authentication > URL Configuration > Site URL e Redirect URLs
 # ============================================================================
 
 [build]
@@ -25,11 +7,10 @@
   publish = ".next"
 
 [build.environment]
-  # Next.js 16 exige Node 20.9+
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
   NPM_FLAGS = "--no-audit --no-fund"
-  # O cache do Turbopack grava valores de env em .sst. Não vai para o site,
-  # mas o secrets scan do Netlify lê esses arquivos e bloqueia o deploy.
+
+  # Evita falso positivo do scanner de segredos no cache do Next/Turbopack
   SECRETS_SCAN_ENABLED = "false"
   SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**"

@@ -21,7 +21,7 @@
 # ============================================================================
 
 [build]
-  command = "rm -rf .next .netlify && npm run build"
+  command = "rm -rf .next .netlify/.next && npm run build"
   publish = ".next"
 
 [build.environment]

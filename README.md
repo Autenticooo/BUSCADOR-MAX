@@ -123,7 +123,11 @@ No Supabase: **SQL Editor → New query**, cole e execute nesta ordem:
    `false`, RLS exige assinatura ativa, trava contra auto-alteração de `role/ativo`
 3. `supabase/migrations/0003_kiwify.sql` — colunas de assinatura (plano, data,
    transação) preenchidas pelo webhook da Kiwify
-4. `supabase/seed.sql` *(opcional)* — 20 produtos de exemplo
+4. `supabase/migrations/0004_kiwify_only_activation.sql` — acesso liberado **só**
+   por pagamento confirmado: cadastro nasce pendente, confirmação de e-mail não
+   libera nada e somente o webhook (service role) / SQL Editor / admin alteram
+   `ativo`; cria a RPC `public.aplicar_pagamento_kiwify()`
+5. `supabase/seed.sql` *(opcional)* — 20 produtos de exemplo
 
 Todos são **idempotentes** (podem rodar mais de uma vez).
 
@@ -144,6 +148,11 @@ update public.users set role = 'admin', ativo = true where email = 'seu@email.co
 > mas o CRUD de produtos via `is_admin()` exige os dois.
 > Para liberar assinantes comuns, basta o `ativo = true` (ver
 > *Acesso por assinatura*, acima).
+>
+> Desde a migration 0004 isso é feito **pelo webhook da Kiwify** quando o
+> pagamento é confirmado (`public.aplicar_pagamento_kiwify()`); a confirmação
+> de e-mail do Supabase **não** libera acesso — o cadastro continua com
+> `ativo = false` até chegar o evento de compra aprovada.
 
 > Se o seu projeto não permitir trigger em `auth.users`, tudo bem: o login chama
 > a RPC `public.ensure_profile()` como fallback e o perfil é criado do mesmo jeito.
@@ -292,9 +301,9 @@ tests/                    vitest: banco/RLS (PGlite) + regras de negócio
 | `npm start` | servidor de produção |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run validate` | validação ponta a ponta contra o projeto Supabase real (24 verificações) |
-| `npm test` | **64 testes**: 26 de schema/RLS em Postgres real (PGlite) + 38 de regras |
+| `npm test` | **171 testes**: 51 de schema/RLS em Postgres real (PGlite) + 120 de regras |
 
-Os testes de banco (`tests/db`) sobem um Postgres de verdade em WASM, aplicam a
-`0001_init.sql` e trocam de role (`anon` / `authenticated` + claim de usuário) para
+Os testes de banco (`tests/db`) sobem um Postgres de verdade em WASM, aplicam
+todas as migrations de `supabase/migrations/` em ordem e trocam de role (`anon` / `authenticated` + claim de usuário) para
 provar que cada política se comporta como descrito acima — incluindo o disparo do
 trigger de MAX SCORE e a execução do `seed.sql`.

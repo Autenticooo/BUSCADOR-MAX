@@ -36,11 +36,24 @@ Observações importantes:
 
 ## 2. Configuração passo a passo
 
-### 2.1 Aplicar a migration 0003
+### 2.1 Aplicar as migrations 0003 e 0004
 
 No Supabase: **SQL Editor → New query**, cole `supabase/migrations/0003_kiwify.sql`
 e execute. Ela cria as colunas de assinatura e estende a trava que impede o
 usuário de alterar os próprios dados de assinatura.
+
+Em seguida execute `supabase/migrations/0004_kiwify_only_activation.sql`. Ela
+fecha o fluxo de liberação:
+
+- todo cadastro nasce com `ativo = false` (inclusive via `ensure_profile()`);
+- a confirmação de e-mail do Supabase (UPDATE em `auth.users`) **não** libera
+  acesso — só sincroniza o e-mail no perfil;
+- `ativo` só muda por escritor privilegiado: `service_role` (este webhook),
+  `postgres` (SQL Editor/Dashboard) ou admin logado;
+- cria a RPC `public.aplicar_pagamento_kiwify(email, ativo, plano, transação, data)`
+  — execução restrita à service role; usuário comum que tentar chamar recebe 42501.
+
+Ambas são idempotentes.
 
 ### 2.2 Variáveis de ambiente
 
@@ -121,8 +134,9 @@ Respostas possíveis:
 - O token é comparado em **tempo constante** (`crypto.timingSafeEqual`).
 - Sem token configurado, a rota **falha fechada** (500, nada é gravado).
 - A service role só escreve via esta rota; o restante do app segue 100% sob
-  RLS. A trigger `users_protect_role_ativo` (migration 0003) impede que o
-  próprio usuário altere `ativo`, `role` e os campos de assinatura.
+  RLS. A trigger `users_protect_role_ativo` (migrations 0003 e 0004) impede que
+  o próprio usuário altere `ativo`, `role` e os campos de assinatura — e força
+  `ativo = false` em qualquer INSERT feito por caminho não privilegiado.
 - O middleware de sessão não intercepta o webhook: rotas `/api/*` são
   liberadas de qualquer redirect (nem para `/login` sem sessão, nem para
   `/dashboard` com sessão), então a Kiwify sempre recebe a resposta HTTP
